@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Sidescrolling Anka</title>
+  <title>MrDucky-spelet</title>
   <style>
     body {
       margin: 0;
@@ -19,89 +19,113 @@
 <body>
   <canvas id="gameCanvas" width="800" height="400"></canvas>
   <script>
-    // Hämta canvas och dess kontext
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-
-    // Spelvariabler
-    const groundHeight = 100;
-    let gameSpeed = 3;
-    let worldX = 0; // Totala scrollningen i världen
-    let score = 0;
-    let rocks = [];
+    // --- Globala spelvariabler ---
+    let score = 0;            // Poäng
+    let gameSpeed = 3;        // Hastighet för scrollning
+    let worldX = 0;           // Hur långt vi scrollat i "världen"
+    let rocks = [];           // Array för stenar/hinder
     let rockSpawnTimer = Math.floor(Math.random() * 150) + 150;
+    const groundHeight = 100; // Markens höjd
+    const totalLevels = 7;    // Antal bakgrundsnivåer
 
-    // Anka-egenskaper
+    // --- Ladda bakgrundsbilder (map1.jpg till map7.jpg) ---
+    const backgrounds = [];
+    for (let i = 1; i <= totalLevels; i++) {
+      const img = new Image();
+      img.src = `map${i}.jpg`;
+      img.onload = () => console.log(`map${i}.jpg loaded.`);
+      img.onerror = () => console.error(`Error loading map${i}.jpg`);
+      backgrounds.push(img);
+    }
+
+    // --- Ankan (mrducky.png) ---
     const duck = {
       x: 100,
-      y: canvas.height - groundHeight - 50, // Startposition
+      y: 0, // sätts nedan
       width: 50,
       height: 50,
       vy: 0,
-      gravity: 1.0,
-      jumpForce: -30,
+      gravity: 1.0,    // Lägre gravitation för längre lufttid
+      jumpForce: -30,  // Starkare hoppkraft
       isJumping: false,
       image: new Image()
     };
     duck.image.src = 'mrducky.png';
+    duck.y = (document.getElementById('gameCanvas').height - groundHeight) - duck.height;
 
-    // Ladda och spela bakgrundsmusiken
+    // --- Sten (rock.png) ---
+    const rockImage = new Image();
+    rockImage.src = 'rock.png';
+    rockImage.onload = () => console.log("rock.png loaded.");
+    rockImage.onerror = () => console.error("Error loading rock.png");
+
+    // --- Musik (mrducky.mp3) ---
     const music = new Audio('mrducky.mp3');
     music.loop = true;
     music.volume = 0.5;
-    music.play().catch(error => {
-      console.warn("Autoplay blockerades. Klicka någonstans för att starta musiken.", error);
-    });
-    document.addEventListener('click', () => { 
-      if (music.paused) {
-        music.play(); 
-      }
+    music.play().catch(err => {
+      console.warn("Autoplay blockerades. Klick krävs för att starta musiken.", err);
     });
 
-    // Funktion för att göra ett hopp
-    function jump() {
-      if (!duck.isJumping) {
-        duck.vy = duck.jumpForce;
-        duck.isJumping = true;
-      }
-    }
+    // --- Canvas ---
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-    // Lyssna på tangenttryckningar (hoppa med mellanslag)
-    document.addEventListener('keydown', function(e) {
-      if (e.code === 'Space' || e.keyCode === 32) {
+    // --- Input-hantering ---
+    // Tangentbord (mellanslag)
+    document.addEventListener('keydown', e => {
+      if ((e.code === 'Space' || e.keyCode === 32) && !duck.isJumping) {
         jump();
       }
     });
-
-    // Lyssna på musklick (för dator) och touchstart (för mobiler)
-    document.addEventListener('mousedown', jump);
+    // Musklick
+    document.addEventListener('mousedown', () => {
+      if (!duck.isJumping) jump();
+    });
+    // Pekskärm
     document.addEventListener('touchstart', function(e) {
-      // Undvik att sidan scrollar på mobilen
-      e.preventDefault();
-      jump();
+      e.preventDefault(); // förhindra scroll på mobil
+      if (!duck.isJumping) jump();
     }, { passive: false });
 
-    // Ladda hinderbilden
-    const rockImage = new Image();
-    rockImage.src = 'rock.png';
+    // Klick/tryck för att starta musiken om den är pausad
+    document.addEventListener('click', () => {
+      if (music.paused) music.play();
+    });
 
-    // Ladda bakgrund (en eller flera om du har map1, map2 etc.)
-    const backgroundImage = new Image();
-    backgroundImage.src = 'map.jpg';
-
-    // Rita bakgrunden
-    function drawBackground() {
-      let bgX = worldX % canvas.width;
-      bgX = -bgX;
-      // Ritar två kopior för sömlös scroll
-      ctx.drawImage(backgroundImage, bgX, 0, canvas.width, canvas.height);
-      ctx.drawImage(backgroundImage, bgX + canvas.width, 0, canvas.width, canvas.height);
+    // --- Hoppa-funktion ---
+    function jump() {
+      duck.vy = duck.jumpForce;
+      duck.isJumping = true;
     }
 
-    // Uppdatera ankan
+    // --- Rita bakgrund (baserat på vilken nivå spelaren är på) ---
+    function drawBackground() {
+      // Var 3000 poäng ökar nivån, max 7
+      const currentLevel = Math.min(Math.floor(score / 3000) + 1, totalLevels);
+      const currentBg = backgrounds[currentLevel - 1];
+
+      // Om bilden inte laddats eller är "trasig", fyll med en fallback-färg
+      if (!currentBg.complete || currentBg.naturalWidth === 0) {
+        ctx.fillStyle = "#add8e6";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      // Räkna ut var i bilden vi ska börja rita (för scroll)
+      let bgX = worldX % canvas.width;
+      bgX = -bgX;
+
+      // Rita två kopior av bilden för sömlös scroll
+      ctx.drawImage(currentBg, bgX, 0, canvas.width, canvas.height);
+      ctx.drawImage(currentBg, bgX + canvas.width, 0, canvas.width, canvas.height);
+    }
+
+    // --- Uppdatera och rita ankan ---
     function updateDuck() {
       duck.vy += duck.gravity;
       duck.y += duck.vy;
+
       // Markkollision
       if (duck.y + duck.height >= canvas.height - groundHeight) {
         duck.y = canvas.height - groundHeight - duck.height;
@@ -109,18 +133,17 @@
         duck.isJumping = false;
       }
     }
-
-    // Rita ankan
     function drawDuck() {
       if (duck.image.complete) {
         ctx.drawImage(duck.image, duck.x, duck.y, duck.width, duck.height);
       } else {
+        // Fallback: en gul rektangel om bilden inte är laddad
         ctx.fillStyle = 'yellow';
         ctx.fillRect(duck.x, duck.y, duck.width, duck.height);
       }
     }
 
-    // Hinder (stenar)
+    // --- Stenar (hinder) ---
     function spawnRock() {
       const rockWidth = 40;
       const rockHeight = 40;
@@ -132,10 +155,10 @@
       };
       rocks.push(rock);
     }
-
     function updateRocks() {
-      // Ta bort stenar som försvunnit
+      // Ta bort stenar som "försvunnit" till vänster
       rocks = rocks.filter(rock => (rock.worldX - worldX + rock.width) > 0);
+      // Räkna ner spawn-timer
       if (rockSpawnTimer <= 0) {
         spawnRock();
         rockSpawnTimer = Math.floor(Math.random() * 150) + 150;
@@ -143,28 +166,32 @@
         rockSpawnTimer--;
       }
     }
-
     function drawRocks() {
       rocks.forEach(rock => {
-        let rockScreenX = rock.worldX - worldX;
-        if (rockImage.complete) {
+        const rockScreenX = rock.worldX - worldX;
+        if (rockImage.complete && rockImage.naturalWidth > 0) {
           ctx.drawImage(rockImage, rockScreenX, rock.y, rock.width, rock.height);
         } else {
+          // Fallback: en grå rektangel om bilden inte är laddad
           ctx.fillStyle = 'gray';
           ctx.fillRect(rockScreenX, rock.y, rock.width, rock.height);
         }
       });
     }
 
-    // Kollisionsdetektion
+    // --- Kollisionsdetektion (Axis-Aligned Bounding Box) ---
     function isColliding(a, rockScreenX, rock) {
-      return a.x < rockScreenX + rock.width &&
-             a.x + a.width > rockScreenX &&
-             a.y < rock.y + rock.height &&
-             a.y + a.height > rock.y;
+      return (
+        a.x < rockScreenX + rock.width &&
+        a.x + a.width > rockScreenX &&
+        a.y < rock.y + rock.height &&
+        a.y + a.height > rock.y
+      );
     }
 
+    // --- Återställ spelet ---
     function resetGame() {
+      console.log("Kollision! Spelet återställs.");
       score = 0;
       rocks = [];
       duck.y = canvas.height - groundHeight - duck.height;
@@ -174,42 +201,55 @@
       rockSpawnTimer = Math.floor(Math.random() * 150) + 150;
     }
 
-    let score = 0;
+    // --- Spelloopen ---
     function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Scrolla världen
+      // Kolla om spelaren nått 21000 poäng (7 nivåer * 3000 = 21000)
+      if (score >= 21000) {
+        // Visa vinnarmeddelande och avsluta
+        ctx.fillStyle = "black";
+        ctx.font = "50px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("OH MY GOD GRATTIS!", canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      // Uppdatera scroll
       worldX += gameSpeed;
 
-      // Rita bakgrunden
+      // Rita bakgrund
       drawBackground();
 
-      // Uppdatera ankan
+      // Uppdatera & rita ankan
       updateDuck();
       drawDuck();
 
-      // Uppdatera stenar
+      // Uppdatera & rita stenar
       updateRocks();
       drawRocks();
 
-      // Kollision
+      // Kollisionskontroll
       for (let rock of rocks) {
-        let rockScreenX = rock.worldX - worldX;
+        const rockScreenX = rock.worldX - worldX;
         if (isColliding(duck, rockScreenX, rock)) {
           resetGame();
           break;
         }
       }
 
-      // Rita poäng
+      // Uppdatera & rita poäng
       score++;
       ctx.font = "20px Arial";
       ctx.fillStyle = "black";
+      ctx.textAlign = "left";
       ctx.fillText("Score: " + score, 10, 30);
 
+      // Nästa frame
       requestAnimationFrame(gameLoop);
     }
 
+    // --- Starta spelet ---
     gameLoop();
   </script>
 </body>
