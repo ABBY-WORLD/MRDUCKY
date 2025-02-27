@@ -23,7 +23,7 @@
     // Spelvariabler
     const groundHeight = 100;
     let gameSpeed = 3;
-    let worldX = 0; // Den totala scrollningen i världen
+    let worldX = 0; // Totala scrollningen i världen
     let score = 0;
     let rocks = [];
     // Timer för när nästa sten ska spawnas (i frames)
@@ -54,15 +54,15 @@
     });
     document.addEventListener('click', () => { if(music.paused) music.play(); });
 
-    // Anka-objektet
+    // Anka-objektet med justerade hoppparametrar
     const duck = {
       x: 100,
       y: canvas.height - groundHeight - 50, // Ankan är 50px hög
       width: 50,
       height: 50,
       vy: 0,
-      gravity: 1.5,
-      jumpForce: -20,
+      gravity: 1.0,      // Lägre gravitation för längre lufttid
+      jumpForce: -30,    // Starkare hoppkraft för högre hopp
       isJumping: false
     };
 
@@ -79,13 +79,12 @@
     // Rita bakgrunden (map.jpg) med två kopior, baserat på worldX
     function drawBackground() {
       let bgX = worldX % canvas.width;
-      // Vi vill att bilden ska börja ritas från vänster, så vi flyttar till negativt om nödvändigt
       bgX = -bgX;
       ctx.drawImage(backgroundImage, bgX, 0, canvas.width, canvas.height);
       ctx.drawImage(backgroundImage, bgX + canvas.width, 0, canvas.width, canvas.height);
     }
 
-    // Uppdatera ankan (gravitation och kollision med marken)
+    // Uppdatera ankan (gravitation och markkollision)
     function updateDuck() {
       duck.vy += duck.gravity;
       duck.y += duck.vy;
@@ -119,9 +118,8 @@
       rocks.push(rock);
     }
 
-    // Uppdatera stenarna: vi kontrollerar bara om de är utanför skärmen samt hanterar spawn-timer
+    // Uppdatera stenarna: behåll bara de som är synliga och hantera spawn-timer
     function updateRocks() {
-      // Räkna ut stenens skärmx-koordinat = rock.worldX - worldX
       rocks = rocks.filter(rock => (rock.worldX - worldX + rock.width) > 0);
       if (rockSpawnTimer <= 0) {
         spawnRock();
