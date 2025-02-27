@@ -50,6 +50,20 @@
       console.error("Error loading mrducky.png. Kontrollera sökvägen till bilden.");
     };
 
+    // Ladda och spela bakgrundsmusiken
+    const music = new Audio('mrducky.mp3');
+    music.loop = true;
+    music.volume = 0.5; // Justera volymen efter behov
+    music.play().catch(function(error) {
+      console.warn("Autoplay blockerades. Musiken spelas vid användarinteraktion.", error);
+    });
+    // Starta musiken vid första klick om autoplay blockeras
+    document.addEventListener('click', function() {
+      if (music.paused) {
+        music.play();
+      }
+    });
+
     // Lyssna på tangenttryckningar (hoppa med mellanslag)
     document.addEventListener('keydown', function(e) {
       if(e.code === 'Space' || e.keyCode === 32) {
