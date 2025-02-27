@@ -17,51 +17,47 @@
 <body>
   <canvas id="gameCanvas" width="800" height="400"></canvas>
   <script>
-    // Hämta canvas och dess kontext
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
     // Spelvariabler
     const groundHeight = 100;
     let gameSpeed = 3;
-    let backgroundX = 0;
+    let worldX = 0; // Den totala scrollningen i världen
     let score = 0;
     let rocks = [];
-    let rockSpawnTimer = 0; // Räknare för när nästa sten ska spawna
+    // Timer för när nästa sten ska spawnas (i frames)
+    let rockSpawnTimer = Math.floor(Math.random() * 150) + 150;
 
     // Ladda bilder
     const duckImage = new Image();
     duckImage.src = 'mrducky.png';
-    duckImage.onload = () => console.log("MrDucky image loaded successfully.");
-    duckImage.onerror = () => console.error("Error loading mrducky.png. Kontrollera sökvägen.");
+    duckImage.onload = () => console.log("MrDucky image loaded.");
+    duckImage.onerror = () => console.error("Error loading mrducky.png");
 
     const backgroundImage = new Image();
     backgroundImage.src = 'map.jpg';
-    backgroundImage.onload = () => console.log("Map image loaded successfully.");
-    backgroundImage.onerror = () => console.error("Error loading map.jpg. Kontrollera sökvägen.");
+    backgroundImage.onload = () => console.log("Map image loaded.");
+    backgroundImage.onerror = () => console.error("Error loading map.jpg");
 
     const rockImage = new Image();
     rockImage.src = 'rock.png';
-    rockImage.onload = () => console.log("Rock image loaded successfully.");
-    rockImage.onerror = () => console.error("Error loading rock.png. Kontrollera sökvägen.");
+    rockImage.onload = () => console.log("Rock image loaded.");
+    rockImage.onerror = () => console.error("Error loading rock.png");
 
     // Ladda och spela bakgrundsmusiken
     const music = new Audio('mrducky.mp3');
     music.loop = true;
     music.volume = 0.5;
     music.play().catch(error => {
-      console.warn("Autoplay blockerades. Musiken spelas vid användarinteraktion.", error);
+      console.warn("Autoplay blockerades. Klicka för att starta musiken.", error);
     });
-    document.addEventListener('click', function() {
-      if (music.paused) {
-        music.play();
-      }
-    });
+    document.addEventListener('click', () => { if(music.paused) music.play(); });
 
-    // Anka-objekt
+    // Anka-objektet
     const duck = {
       x: 100,
-      y: canvas.height - groundHeight - 50, // Startposition (duckens höjd = 50)
+      y: canvas.height - groundHeight - 50, // Ankan är 50px hög
       width: 50,
       height: 50,
       vy: 0,
@@ -70,9 +66,9 @@
       isJumping: false
     };
 
-    // Tangentlyssnare för hopp (mellanslag)
-    document.addEventListener('keydown', function(e) {
-      if (e.code === 'Space' || e.keyCode === 32) {
+    // Tangentlyssnare för hopp
+    document.addEventListener('keydown', e => {
+      if(e.code === 'Space' || e.keyCode === 32) {
         if (!duck.isJumping) {
           duck.vy = duck.jumpForce;
           duck.isJumping = true;
@@ -80,22 +76,19 @@
       }
     });
 
-    // Rita den rullande bakgrunden med map.jpg
+    // Rita bakgrunden (map.jpg) med två kopior, baserat på worldX
     function drawBackground() {
-      // Vi beräknar ett modulo-värde så att vi kan rita två kopior av bilden
-      let bgX = backgroundX % canvas.width;
+      let bgX = worldX % canvas.width;
+      // Vi vill att bilden ska börja ritas från vänster, så vi flyttar till negativt om nödvändigt
+      bgX = -bgX;
       ctx.drawImage(backgroundImage, bgX, 0, canvas.width, canvas.height);
-      if (bgX > 0) {
-        ctx.drawImage(backgroundImage, bgX - canvas.width, 0, canvas.width, canvas.height);
-      }
+      ctx.drawImage(backgroundImage, bgX + canvas.width, 0, canvas.width, canvas.height);
     }
 
-    // Uppdatera ankan med gravitation och markkollision
+    // Uppdatera ankan (gravitation och kollision med marken)
     function updateDuck() {
       duck.vy += duck.gravity;
       duck.y += duck.vy;
-
-      // Kollision med marken
       if (duck.y + duck.height >= canvas.height - groundHeight) {
         duck.y = canvas.height - groundHeight - duck.height;
         duck.vy = 0;
@@ -103,7 +96,7 @@
       }
     }
 
-    // Rita ankan (om bilden inte är laddad visas en gul rektangel)
+    // Rita ankan
     function drawDuck() {
       if (duckImage.complete) {
         ctx.drawImage(duckImage, duck.x, duck.y, duck.width, duck.height);
@@ -113,12 +106,12 @@
       }
     }
 
-    // Skapa en sten och lägg till den i listan
+    // Skapa en sten med en worldX-position
     function spawnRock() {
       const rockWidth = 40;
       const rockHeight = 40;
       const rock = {
-        x: canvas.width,
+        worldX: worldX + canvas.width + Math.random() * 200, // placera utanför skärmen
         y: canvas.height - groundHeight - rockHeight,
         width: rockWidth,
         height: rockHeight
@@ -126,42 +119,37 @@
       rocks.push(rock);
     }
 
-    // Rita stenar (om rockImage inte är laddad ritas en grå rektangel)
-    function drawRocks() {
-      rocks.forEach(rock => {
-        if (rockImage.complete) {
-          ctx.drawImage(rockImage, rock.x, rock.y, rock.width, rock.height);
-        } else {
-          ctx.fillStyle = 'gray';
-          ctx.fillRect(rock.x, rock.y, rock.width, rock.height);
-        }
-      });
-    }
-
-    // Uppdatera stenar: flytta dem och kolla om de gått utanför skärmen
+    // Uppdatera stenarna: vi kontrollerar bara om de är utanför skärmen samt hanterar spawn-timer
     function updateRocks() {
-      for (let i = 0; i < rocks.length; i++) {
-        rocks[i].x -= gameSpeed;
-      }
-      // Ta bort stenar som är helt utanför skärmen
-      rocks = rocks.filter(rock => rock.x + rock.width > 0);
-
-      // Hantera spawn-timer
+      // Räkna ut stenens skärmx-koordinat = rock.worldX - worldX
+      rocks = rocks.filter(rock => (rock.worldX - worldX + rock.width) > 0);
       if (rockSpawnTimer <= 0) {
         spawnRock();
-        // Slumpmässigt intervall mellan 100 och 200 frames
-        rockSpawnTimer = Math.floor(Math.random() * 100) + 100;
+        rockSpawnTimer = Math.floor(Math.random() * 150) + 150;
       } else {
         rockSpawnTimer--;
       }
     }
 
-    // Enkel kollisionsdetektion mellan två rektanglar
-    function isColliding(a, b) {
-      return a.x < b.x + b.width &&
-             a.x + a.width > b.x &&
-             a.y < b.y + b.height &&
-             a.y + a.height > b.y;
+    // Rita stenarna
+    function drawRocks() {
+      rocks.forEach(rock => {
+        let rockScreenX = rock.worldX - worldX;
+        if (rockImage.complete) {
+          ctx.drawImage(rockImage, rockScreenX, rock.y, rock.width, rock.height);
+        } else {
+          ctx.fillStyle = 'gray';
+          ctx.fillRect(rockScreenX, rock.y, rock.width, rock.height);
+        }
+      });
+    }
+
+    // Enkel kollisionsdetektion (axis-aligned bounding box)
+    function isColliding(a, rockScreenX, rock) {
+      return a.x < rockScreenX + rock.width &&
+             a.x + a.width > rockScreenX &&
+             a.y < rock.y + rock.height &&
+             a.y + a.height > rock.y;
     }
 
     // Återställ spelet vid kollision
@@ -171,35 +159,38 @@
       duck.y = canvas.height - groundHeight - duck.height;
       duck.vy = 0;
       duck.isJumping = false;
-      backgroundX = 0;
-      rockSpawnTimer = Math.floor(Math.random() * 100) + 100;
+      worldX = 0;
+      rockSpawnTimer = Math.floor(Math.random() * 150) + 150;
     }
 
     // Spelloopen
     function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      // Uppdatera bakgrunden
-      backgroundX += gameSpeed;
-      drawBackground();
+      // Uppdatera världens scrollning
+      worldX += gameSpeed;
       
-      // Uppdatera anka
+      // Rita bakgrunden
+      drawBackground();
+
+      // Uppdatera och rita ankan
       updateDuck();
       drawDuck();
 
-      // Uppdatera och rita stenar
+      // Uppdatera och rita stenarna
       updateRocks();
       drawRocks();
 
-      // Kolla kollision mellan anka och varje sten
+      // Kollisionskontroll
       for (let rock of rocks) {
-        if (isColliding(duck, rock)) {
+        let rockScreenX = rock.worldX - worldX;
+        if (isColliding(duck, rockScreenX, rock)) {
           resetGame();
           break;
         }
       }
 
-      // Uppdatera poängen
+      // Uppdatera poängen (om ingen kollision)
       score++;
       ctx.font = "20px Arial";
       ctx.fillStyle = "black";
@@ -207,6 +198,7 @@
 
       requestAnimationFrame(gameLoop);
     }
+
     gameLoop();
   </script>
 </body>
