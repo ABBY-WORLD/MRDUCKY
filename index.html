@@ -40,6 +40,12 @@
     backgroundImage.onload = () => console.log("Map image loaded.");
     backgroundImage.onerror = () => console.error("Error loading map.jpg");
 
+    // Ny bana - byts in när poängen når 3000
+    const backgroundImage2 = new Image();
+    backgroundImage2.src = 'map2.jpg';
+    backgroundImage2.onload = () => console.log("Map2 image loaded.");
+    backgroundImage2.onerror = () => console.error("Error loading map2.jpg");
+
     const rockImage = new Image();
     rockImage.src = 'rock.png';
     rockImage.onload = () => console.log("Rock image loaded.");
@@ -62,7 +68,7 @@
       height: 50,
       vy: 0,
       gravity: 1.0,      // Lägre gravitation för längre lufttid
-      jumpForce: -25,    // Starkare hoppkraft för högre hopp
+      jumpForce: -30,    // Starkare hoppkraft för högre hopp
       isJumping: false
     };
 
@@ -76,12 +82,14 @@
       }
     });
 
-    // Rita bakgrunden (map.jpg) med två kopior, baserat på worldX
+    // Rita bakgrunden med två kopior, baserat på worldX.
+    // Om score >= 3000 används backgroundImage2 istället för backgroundImage.
     function drawBackground() {
+      const currentBg = (score >= 3000) ? backgroundImage2 : backgroundImage;
       let bgX = worldX % canvas.width;
       bgX = -bgX;
-      ctx.drawImage(backgroundImage, bgX, 0, canvas.width, canvas.height);
-      ctx.drawImage(backgroundImage, bgX + canvas.width, 0, canvas.width, canvas.height);
+      ctx.drawImage(currentBg, bgX, 0, canvas.width, canvas.height);
+      ctx.drawImage(currentBg, bgX + canvas.width, 0, canvas.width, canvas.height);
     }
 
     // Uppdatera ankan (gravitation och markkollision)
@@ -188,7 +196,7 @@
         }
       }
 
-      // Uppdatera poängen (om ingen kollision)
+      // Uppdatera poängen
       score++;
       ctx.font = "20px Arial";
       ctx.fillStyle = "black";
