@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sidescrolling Anka</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #70c5ce;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: #70c5ce;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <script>
+    // Hämta canvas och dess kontext
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Spelvariabler
+    const groundHeight = 100;
+    let gameSpeed = 3;
+    let backgroundX = 0;
+
+    // Anka-egenskaper
+    const duck = {
+      x: 100,
+      y: canvas.height - groundHeight - 50, // Startposition (duckens höjd = 50)
+      width: 50,
+      height: 50,
+      vy: 0,
+      gravity: 1.5,
+      jumpForce: -20,
+      isJumping: false,
+      image: new Image()
+    };
+    duck.image.src = 'mrducky.png'; // Ladda bilden från rotnivån
+
+    // Kontrollera att bilden laddas korrekt
+    duck.image.onload = function() {
+      console.log("MrDucky image loaded successfully.");
+    };
+    duck.image.onerror = function() {
+      console.error("Error loading mrducky.png. Kontrollera sökvägen till bilden.");
+    };
+
+    // Lyssna på tangenttryckningar (hoppa med mellanslag)
+    document.addEventListener('keydown', function(e) {
+      if(e.code === 'Space' || e.keyCode === 32) {
+        if (!duck.isJumping) {
+          duck.vy = duck.jumpForce;
+          duck.isJumping = true;
+        }
+      }
+    });
+
+    // Rita bakgrunden med en fast himmel och mark samt ett enkelt mönster för marken
+    function drawBackground() {
+      // Rita himlen
+      ctx.fillStyle = '#87ceeb';
+      ctx.fillRect(0, 0, canvas.width, canvas.height - groundHeight);
+
+      // Rita marken
+      ctx.fillStyle = '#654321';
+      ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+
+      // Rita ett enkelt markmönster för att simulera rörelse
+      ctx.fillStyle = '#5c4033';
+      for (let i = 0; i < canvas.width; i += 40) {
+        const xPos = (i - backgroundX) % canvas.width;
+        ctx.fillRect(xPos, canvas.height - groundHeight, 20, groundHeight);
+      }
+    }
+
+    // Uppdatera ankan med gravitation och kollision mot marken
+    function updateDuck() {
+      duck.vy += duck.gravity;
+      duck.y += duck.vy;
+
+      // Kollision med marken
+      if (duck.y + duck.height >= canvas.height - groundHeight) {
+        duck.y = canvas.height - groundHeight - duck.height;
+        duck.vy = 0;
+        duck.isJumping = false;
+      }
+    }
+
+    // Rita ankan; om bilden inte är laddad ritas en gul rektangel istället
+    function drawDuck() {
+      if (duck.image.complete) {
+        ctx.drawImage(duck.image, duck.x, duck.y, duck.width, duck.height);
+      } else {
+        ctx.fillStyle = 'yellow';
+        ctx.fillRect(duck.x, duck.y, duck.width, duck.height);
+      }
+    }
+
+    // Spelloopen
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      backgroundX += gameSpeed;
+      drawBackground();
+      updateDuck();
+      drawDuck();
+      requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+  </script>
+</body>
+</html>
