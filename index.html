@@ -28,27 +28,27 @@
     let rocks = [];
     // Timer för när nästa sten ska spawnas (i frames)
     let rockSpawnTimer = Math.floor(Math.random() * 150) + 150;
+    
+    // Nivåer – vi har bakgrunder från map1.jpg till map7.jpg
+    const totalLevels = 7;
+    const backgrounds = [];
+    for (let i = 1; i <= totalLevels; i++) {
+      const img = new Image();
+      img.src = `map${i}.jpg`;
+      img.onload = () => console.log(`map${i}.jpg loaded.`);
+      img.onerror = () => console.error(`Error loading map${i}.jpg`);
+      backgrounds.push(img);
+    }
 
-    // Ladda bilder
+    // Ladda andra bilder
     const duckImage = new Image();
     duckImage.src = 'mrducky.png';
-    duckImage.onload = () => console.log("MrDucky image loaded.");
+    duckImage.onload = () => console.log("mrducky.png loaded.");
     duckImage.onerror = () => console.error("Error loading mrducky.png");
-
-    const backgroundImage = new Image();
-    backgroundImage.src = 'map.jpg';
-    backgroundImage.onload = () => console.log("Map image loaded.");
-    backgroundImage.onerror = () => console.error("Error loading map.jpg");
-
-    // Ny bana - byts in när poängen når 3000
-    const backgroundImage2 = new Image();
-    backgroundImage2.src = 'map2.jpg';
-    backgroundImage2.onload = () => console.log("Map2 image loaded.");
-    backgroundImage2.onerror = () => console.error("Error loading map2.jpg");
 
     const rockImage = new Image();
     rockImage.src = 'rock.png';
-    rockImage.onload = () => console.log("Rock image loaded.");
+    rockImage.onload = () => console.log("rock.png loaded.");
     rockImage.onerror = () => console.error("Error loading rock.png");
 
     // Ladda och spela bakgrundsmusiken
@@ -58,34 +58,34 @@
     music.play().catch(error => {
       console.warn("Autoplay blockerades. Klicka för att starta musiken.", error);
     });
-    document.addEventListener('click', () => { if(music.paused) music.play(); });
+    document.addEventListener('click', () => { if (music.paused) music.play(); });
 
-    // Anka-objektet med justerade hoppparametrar
+    // Anka-objektet (med justerat hopp)
     const duck = {
       x: 100,
-      y: canvas.height - groundHeight - 50, // Ankan är 50px hög
+      y: canvas.height - groundHeight - 50, // ankan är 50px hög
       width: 50,
       height: 50,
       vy: 0,
-      gravity: 1.0,      // Lägre gravitation för längre lufttid
-      jumpForce: -28,    // Starkare hoppkraft för högre hopp
+      gravity: 1.0,
+      jumpForce: -30,
       isJumping: false
     };
 
     // Tangentlyssnare för hopp
     document.addEventListener('keydown', e => {
-      if(e.code === 'Space' || e.keyCode === 32) {
-        if (!duck.isJumping) {
-          duck.vy = duck.jumpForce;
-          duck.isJumping = true;
-        }
+      if ((e.code === 'Space' || e.keyCode === 32) && !duck.isJumping) {
+        duck.vy = duck.jumpForce;
+        duck.isJumping = true;
       }
     });
 
-    // Rita bakgrunden med två kopior, baserat på worldX.
-    // Om score >= 3000 används backgroundImage2 istället för backgroundImage.
+    // Rita bakgrunden – baserat på aktuell nivå. Använd två kopior för sömlös scroll.
     function drawBackground() {
-      const currentBg = (score >= 3000) ? backgroundImage2 : backgroundImage;
+      // Bestäm aktuell nivå: varje 3000 poäng ökar nivån, max 7
+      const currentLevel = Math.min(Math.floor(score / 3000) + 1, totalLevels);
+      const currentBg = backgrounds[currentLevel - 1];
+      // Räkna ut offset baserat på worldX
       let bgX = worldX % canvas.width;
       bgX = -bgX;
       ctx.drawImage(currentBg, bgX, 0, canvas.width, canvas.height);
@@ -108,7 +108,7 @@
       if (duckImage.complete) {
         ctx.drawImage(duckImage, duck.x, duck.y, duck.width, duck.height);
       } else {
-        ctx.fillStyle = 'yellow';
+        ctx.fillStyle = "yellow";
         ctx.fillRect(duck.x, duck.y, duck.width, duck.height);
       }
     }
@@ -128,6 +128,7 @@
 
     // Uppdatera stenarna: behåll bara de som är synliga och hantera spawn-timer
     function updateRocks() {
+      // Ta bort stenar som är utanför skärmen
       rocks = rocks.filter(rock => (rock.worldX - worldX + rock.width) > 0);
       if (rockSpawnTimer <= 0) {
         spawnRock();
@@ -144,7 +145,7 @@
         if (rockImage.complete) {
           ctx.drawImage(rockImage, rockScreenX, rock.y, rock.width, rock.height);
         } else {
-          ctx.fillStyle = 'gray';
+          ctx.fillStyle = "gray";
           ctx.fillRect(rockScreenX, rock.y, rock.width, rock.height);
         }
       });
@@ -196,11 +197,21 @@
         }
       }
 
-      // Uppdatera poängen
+      // Öka poängen
       score++;
       ctx.font = "20px Arial";
       ctx.fillStyle = "black";
       ctx.fillText("Score: " + score, 10, 30);
+
+      // Om spelaren når 21000 poäng (allra sista nivån klarad) visa finalt meddelande
+      if (score >= 21000) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "black";
+        ctx.font = "50px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("OH MY GOD GRATTIS!", canvas.width / 2, canvas.height / 2);
+        return; // Stoppa spelet
+      }
 
       requestAnimationFrame(gameLoop);
     }
